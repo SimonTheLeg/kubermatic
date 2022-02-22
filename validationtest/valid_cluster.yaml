@@ -1,0 +1,75 @@
+address:
+  adminToken: sanitized
+  externalName: someniceplace.com
+  internalURL: someniceplace.com.svc.cluster.local.
+  ip: 1.2.3.4
+  port: 30086
+  url: https://someniceplace.com
+apiVersion: kubermatic.k8c.io/v1
+kind: Cluster
+metadata:
+  annotations:
+    kubermatic.io/aws-region: eu-central-1
+  creationTimestamp: "2022-02-22T13:30:30Z"
+  generation: 7
+  labels:
+    project-id: f6ftmknwsj
+  name: 5wdkgdxpmj
+  resourceVersion: "1081370721"
+  uid: 23408f4c-bc9d-4495-ac1a-34edace89828
+spec:
+  auditLogging: {}
+  cloud:
+    aws:
+      credentialsReference:
+        name: sanitized
+        namespace: kubermatic
+      instanceProfileName: kubernetes-5wdkgdxpmj
+      roleARN: kubernetes-5wdkgdxpmj-control-plane
+      routeTableID: sanitized
+      securityGroupID: sanitized
+      vpcID: sanitized
+    dc: aws-eu-central-1a
+    providerName: aws
+  clusterNetwork:
+    dnsDomain: cluster.local
+    konnectivityEnabled: true
+    nodeLocalDNSCacheEnabled: true
+    pods:
+      cidrBlocks:
+        - 172.25.0.0/16
+    proxyMode: ipvs
+    services:
+      cidrBlocks:
+        - 10.240.16.0/20
+  cniPlugin:
+    type: canal
+    version: v3.21
+  componentsOverride:
+    apiserver:
+      nodePortRange: 30000-32767
+      replicas: 2
+    controllerManager:
+      leaderElection: {}
+      replicas: 1
+    etcd:
+      clusterSize: 3
+      diskSize: 5Gi
+    nodePortProxyEnvoy:
+      resources: {}
+    prometheus: {}
+    scheduler:
+      leaderElection: {}
+      replicas: 1
+  containerRuntime: containerd
+  enableUserSSHKeyAgent: true
+  exposeStrategy: NodePort
+  features:
+    apiserverNetworkPolicy: true
+  humanReadableName: simple-test-cluster
+  mla: {}
+  oidc: {}
+  opaIntegration:
+    webhookTimeoutSeconds: 10
+  pause: false
+  version: 1.22.5
