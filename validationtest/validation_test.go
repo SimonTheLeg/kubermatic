@@ -24,8 +24,6 @@ func validatorFromCRD(crd io.Reader, desVer string) (*validate.SchemaValidator, 
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO figure out why we need the conversions
 	crdr := &ext.CustomResourceDefinition{}
 	if err := extv1.Convert_v1_CustomResourceDefinition_To_apiextensions_CustomResourceDefinition(crdv1, crdr, nil); err != nil {
 		return nil, err
@@ -90,9 +88,9 @@ func TestValidation(t *testing.T) {
 
 			// validate the object
 			// This is going to print the invalid value for our "illegal cni plugin" case
-			res := v.Validate(obj)
-			for i, e := range res.Errors {
-				fmt.Printf("Validation Error %d (%s)(%s): %s\n", i, obj.GroupVersionKind().String(), obj.GetName(), e.Error())
+			res := validation.ValidateCustomResource(nil, obj, v)
+			for _, e := range res {
+				fmt.Println(e.Error())
 			}
 
 		})
