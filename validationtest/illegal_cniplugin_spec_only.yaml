@@ -1,0 +1,55 @@
+auditLogging: {}
+cloud:
+  aws:
+    credentialsReference:
+      name: sanitized
+      namespace: kubermatic
+    instanceProfileName: kubernetes-5wdkgdxpmj
+    roleARN: kubernetes-5wdkgdxpmj-control-plane
+    routeTableID: sanitized
+    securityGroupID: sanitized
+    vpcID: sanitized
+  dc: aws-eu-central-1a
+  providerName: aws
+clusterNetwork:
+  dnsDomain: cluster.local
+  konnectivityEnabled: true
+  nodeLocalDNSCacheEnabled: true
+  pods:
+    cidrBlocks:
+      - 172.25.0.0/16
+  proxyMode: ipvs
+  services:
+    cidrBlocks:
+      - 10.240.16.0/20
+cniPlugin:
+  type: iaminvalid
+  version: v3.21
+componentsOverride:
+  apiserver:
+    nodePortRange: 30000-32767
+    replicas: 2
+  controllerManager:
+    leaderElection: {}
+    replicas: 1
+  etcd:
+    clusterSize: 3
+    diskSize: 5Gi
+  nodePortProxyEnvoy:
+    resources: {}
+  prometheus: {}
+  scheduler:
+    leaderElection: {}
+    replicas: 1
+containerRuntime: containerd
+enableUserSSHKeyAgent: true
+exposeStrategy: NodePort
+features:
+  apiserverNetworkPolicy: true
+humanReadableName: simple-test-cluster
+mla: {}
+oidc: {}
+opaIntegration:
+  webhookTimeoutSeconds: 10
+pause: false
+version: 1.22.5
