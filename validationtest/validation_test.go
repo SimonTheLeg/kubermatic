@@ -33,8 +33,8 @@ func validatorFromCRD(crd io.Reader, desVer string) (*validate.SchemaValidator, 
 	for _, ver := range crdr.Spec.Versions {
 		if ver.Name == desVer {
 
-			if crdr.Spec.Validation == nil {
-				// use the default schema validation if no custom validation was specified
+			// if per-version validation is enabled, use it; otherwise use global validation
+			if ver.Schema != nil {
 				sv, _, err = validation.NewSchemaValidator(ver.Schema)
 			} else {
 				sv, _, err = validation.NewSchemaValidator(crdr.Spec.Validation)
