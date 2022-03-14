@@ -25,8 +25,12 @@ echodate "Running go generate"
 go generate ./pkg/...
 
 echodate "Generating openAPI v3 CRDs"
-go run sigs.k8s.io/controller-tools/cmd/controller-gen \
-  crd \
-  object:headerFile=./hack/boilerplate/ce/boilerplate.go.txt \
-  paths=./pkg/apis/... \
-  output:crd:dir=./charts/kubermatic-operator/crd/k8c.io
+outDirs=( ./charts/kubermatic-operator/crd/k8c.io pkg/validation/openapi/crd/k8c.io)
+for o in "${outDirs[@]}"
+do
+  go run sigs.k8s.io/controller-tools/cmd/controller-gen \
+    crd \
+    object:headerFile=./hack/boilerplate/ce/boilerplate.go.txt \
+    paths=./pkg/apis/... \
+    output:crd:dir=${o}
+done
