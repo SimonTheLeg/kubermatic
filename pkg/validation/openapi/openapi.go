@@ -95,7 +95,14 @@ func v1Validator(u *unstructured.Unstructured, desVer string) (*validate.SchemaV
 	var sv *validate.SchemaValidator
 	for _, ver := range crdr.Spec.Versions {
 		if ver.Name == desVer {
-			sv, _, err = validation.NewSchemaValidator(ver.Schema)
+			// If there is only one version in the CRD, the crdv1 to crd converter will move the validation
+			// into the global .Spe.Validation. Therefore, we need to manually check if per-version or
+			// global validation is enabled
+			if ver.Schema != nil {
+				sv, _, err = validation.NewSchemaValidator(ver.Schema)
+			} else {
+				sv, _, err = validation.NewSchemaValidator(crdr.Spec.Validation)
+			}
 			if err != nil {
 				return nil, err
 			}
