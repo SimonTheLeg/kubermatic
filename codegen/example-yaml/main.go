@@ -29,6 +29,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	providerconfig "github.com/kubermatic/machine-controller/pkg/providerconfig/types"
+	appskubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/apps.kubermatic/v1"
 	kubermaticv1 "k8c.io/kubermatic/v2/pkg/apis/kubermatic/v1"
 	"k8c.io/kubermatic/v2/pkg/controller/operator/defaults"
 
@@ -58,11 +59,16 @@ func main() {
 	// find all .go files in kubermatic/v1
 	kubermaticFiles, err := filepath.Glob(filepath.Join(root, "pkg/apis/kubermatic/v1/*.go"))
 	if err != nil {
-		log.Fatalf("Failed to find go files: %v", err)
+		log.Fatalf("Failed to find kubermatic go files: %v", err)
+	}
+	appsKubermaticFiles, err := filepath.Glob(filepath.Join(root, "pkg/apis/apps.kubermatic/v1/*.go"))
+	if err != nil {
+		log.Fatalf("Failed to find appsKubermatic go files: %v", err)
 	}
 
 	var files []string
 	files = append(files, kubermaticFiles...)
+	files = append(files, appsKubermaticFiles...)
 	files = append(files, filepath.Join(root, "vendor/k8s.io/api/core/v1/types.go"))
 
 	cm, err := genyaml.NewCommentMap(nil, files...)
@@ -73,6 +79,8 @@ func main() {
 	config := createExampleKubermaticConfiguration()
 
 	examples := map[string]runtime.Object{
+		// TODO move this to the bottom of the list
+		"applicationDefinition":   createExampleApplicationDefinition(),
 		"kubermaticConfiguration": config,
 		"seed":                    createExampleSeed(config),
 	}
@@ -256,6 +264,49 @@ func createExampleKubermaticConfiguration() *kubermaticv1.KubermaticConfiguratio
 
 	setUpdateDefaults(&defaulted.Spec.Versions)
 	return defaulted
+}
+
+func createExampleApplicationDefinition() *appskubermaticv1.ApplicationDefinition {
+	appDef := &appskubermaticv1.ApplicationDefinition{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: appskubermaticv1.SchemeGroupVersion.String(),
+			Kind:       appskubermaticv1.ApplicationDefinitionKindName,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "<<appdef-name>>",
+		},
+		Spec: appskubermaticv1.ApplicationDefinitionSpec{
+			Description: "",
+			Method:      appskubermaticv1.HelmTemplateMethod,
+			Versions: []appskubermaticv1.ApplicationVersion{
+				{
+					Version: "v1.2.0-helm",
+					Template: appskubermaticv1.ApplicationTemplate{
+						Source: appskubermaticv1.ApplicationSource{
+							Helm: &appskubermaticv1.HelmSource{
+								URL:          "https://charts.example.com",
+								ChartName:    "my-app",
+								ChartVersion: "v13.9.0",
+								Credentials:  &appskubermaticv1.HelmCredentials{},
+							},
+						},
+					},
+				},
+				{
+					Version: "v1.2.0-git",
+					Template: appskubermaticv1.ApplicationTemplate{
+						Source: appskubermaticv1.ApplicationSource{
+							Git: &appskubermaticv1.GitSource{
+								Remote: "https://git.example.com/repo || git@example.com/repo",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return appDef
 }
 
 // validateAllFieldsAreDefined recursively checks that all fields relevant

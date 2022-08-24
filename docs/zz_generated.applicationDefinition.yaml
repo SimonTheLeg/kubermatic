@@ -1,0 +1,34 @@
+apiVersion: apps.kubermatic.k8c.io/v1
+kind: ApplicationDefinitions
+metadata:
+  name: <<appdef-name>>
+spec:
+  # Description of the application. what is its purpose
+  description: ""
+  # Method used to install the application
+  method: helm
+  # Available versions for this application
+  versions:
+    - # Template defines how application is installed (source provenance, Method...)
+      template:
+        # Defined how the source of the application (e.g Helm chart) is retrieved
+        source:
+          # Install Application from a Helm repository
+          helm:
+            # Name of the Chart
+            chartName: my-app
+            # Version of the Chart
+            chartVersion: v13.9.0
+            # Credentials hold the ref to the secret with helm credentials
+            credentials: {}
+            # URl of the helm repository.
+            # It can be an HTTP(s) repository (e.g. https://localhost/myrepo) or on OCI repository (e.g. oci://localhost:5000/myrepo).
+            url: https://charts.example.com
+      # Version of the application (e.g. v1.2.3)
+      version: v1.2.0-helm
+    - template:
+        source:
+          git:
+            ref: {}
+            remote: https://git.example.com/repo || git@example.com/repo
+      version: v1.2.0-git

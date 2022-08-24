@@ -32,17 +32,20 @@ const (
 )
 
 type HelmCredentials struct {
-	// Username holds the ref and key in the secret for the username credential. Secret must exist in the namespace where
-	// KKP is installed.
+	// Username holds the ref and key in the secret for the username credential
+	// The Secret must exist in the namespace where KKP is installed (default is "kubermatic").
+	// The Secret must be annotated with `apps.kubermatic.k8c.io/secret-type:` set to helm or git
 	Username *corev1.SecretKeySelector `json:"username,omitempty"`
 
-	// Password holds the ref and key in the secret for the Password credential. Secret must exist in the namespace where
-	// KKP is installed.
+	// Password holds the ref and key in the secret for the Password credential
+	// The Secret must exist in the namespace where KKP is installed (default is "kubermatic").
+	// The Secret must be annotated with `apps.kubermatic.k8c.io/secret-type:` set to helm or git
 	Password *corev1.SecretKeySelector `json:"password,omitempty"`
 
 	// RegistryConfigFile holds the ref and key in the secret for the registry credential file. The value is dockercfg
 	// file that follows the same format rules as ~/.docker/config.json
-	// The Secret must exist in the namespace where KKP is installed.
+	// The Secret must exist in the namespace where KKP is installed (default is "kubermatic").
+	// The Secret must be annotated with `apps.kubermatic.k8c.io/secret-type:` set to helm or git
 	RegistryConfigFile *corev1.SecretKeySelector `json:"registryConfigFile,omitempty"`
 }
 
@@ -79,18 +82,26 @@ type GitCredentials struct {
 
 	// Username holds the ref and key in the secret for the username credential. Secret must exist in the namespace where
 	// KKP is installed.
+	// The Secret must exist in the namespace where KKP is installed (default is "kubermatic").
+	// The Secret must be annotated with `apps.kubermatic.k8c.io/secret-type:` set to helm or git
 	Username *corev1.SecretKeySelector `json:"username,omitempty"`
 
 	// Password holds the ref and key in the secret for the Password credential. Secret must exist in the namespace where
 	// KKP is installed.
+	// The Secret must exist in the namespace where KKP is installed (default is "kubermatic").
+	// The Secret must be annotated with `apps.kubermatic.k8c.io/secret-type:` set to helm or git
 	Password *corev1.SecretKeySelector `json:"password,omitempty"`
 
 	// Token holds the ref and key in the secret for the token credential. Secret must exist in the namespace where
 	// KKP is installed.
+	// The Secret must exist in the namespace where KKP is installed (default is "kubermatic").
+	// The Secret must be annotated with `apps.kubermatic.k8c.io/secret-type:` set to helm or git
 	Token *corev1.SecretKeySelector `json:"token,omitempty"`
 
 	// SSHKey holds the ref and key in the secret for the SshKey credential. Secret must exist in the namespace where
 	// KKP is installed.
+	// The Secret must exist in the namespace where KKP is installed (default is "kubermatic").
+	// The Secret must be annotated with `apps.kubermatic.k8c.io/secret-type:` set to helm or git
 	SSHKey *corev1.SecretKeySelector `json:"sshKey,omitempty"`
 }
 
@@ -115,12 +126,11 @@ type GitReference struct {
 }
 
 type GitSource struct {
-	// URL to the repository (e.g. git://host.xz[:port]/path/to/repo.git/)
+	// URL to the repository. Can be HTTP(s) (e.g. https://example.com/myrepo) or SSH (e.g. git://example.com[:port]/path/to/repo.git/)
 	// +kubebuilder:validation:MinLength=1
 	Remote string `json:"remote"`
 
 	// Git reference to checkout.
-	//
 	// For large repositories, we recommend to either use Tag, Branch or Branch+Commit. This allows a shallow clone, which dramatically speeds up performance
 	Ref GitReference `json:"ref"`
 
@@ -132,10 +142,10 @@ type GitSource struct {
 }
 
 type ApplicationSource struct {
-	// Get application to install from a Helm repository
+	// Install Application from a Helm repository
 	Helm *HelmSource `json:"helm,omitempty"`
 
-	// Get application to install from a Git repository
+	// Install application from a Git repository
 	Git *GitSource `json:"git,omitempty"`
 }
 
@@ -200,7 +210,7 @@ type ApplicationConstraints struct {
 }
 
 type ApplicationVersion struct {
-	// Version of the application (eg v1.2.3)
+	// Version of the application (e.g. v1.2.3)
 	Version string `json:"version"`
 
 	// Constraints defined criteria that a user cluster must satisfy for the application to be installed
@@ -218,7 +228,7 @@ type ApplicationDefinitionSpec struct {
 	// Method used to install the application
 	Method TemplateMethod `json:"method"`
 
-	// available version for this application
+	// Available versions for this application
 	Versions []ApplicationVersion `json:"versions"`
 }
 

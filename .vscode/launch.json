@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug example-yaml",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "codegen/example-yaml",
+      "args": [
+        "${workspaceFolder}",
+        "/tmp/docs"
+      ]
+    }
+  ]
+}
