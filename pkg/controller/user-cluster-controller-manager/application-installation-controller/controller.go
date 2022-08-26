@@ -214,7 +214,7 @@ func (r *reconciler) reconcile(ctx context.Context, log *zap.SugaredLogger, appI
 func (r *reconciler) getApplicationVersion(appInstallation *appskubermaticv1.ApplicationInstallation, applicationDef *appskubermaticv1.ApplicationDefinition, appVersion *appskubermaticv1.ApplicationVersion) error {
 	desiredVersion := appInstallation.Spec.ApplicationRef.Version
 	for _, version := range applicationDef.Spec.Versions {
-		if version.Version == desiredVersion {
+		if version.Version.Equal(desiredVersion) {
 			version.DeepCopyInto(appVersion)
 			return nil
 		}
