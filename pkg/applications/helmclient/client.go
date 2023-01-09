@@ -197,10 +197,11 @@ func (h HelmClient) DownloadChart(url string, chartName string, version string, 
 	if strings.HasPrefix(url, "oci://") {
 		repoName = url
 	} else {
-		repoName, err = h.ensureRepository(url, auth)
+		rep, err := h.EnsureRepository(url, auth)
 		if err != nil {
 			return "", err
 		}
+		repoName = rep.Config.Name
 	}
 
 	regClient, options, err := auth.registryClientAndGetterOptions()
@@ -340,7 +341,7 @@ func (h HelmClient) buildDependencies(chartLoc string, auth AuthSettings) (*char
 		for _, dep := range dependencies {
 			// oci or file dependencies can not be added as a repository.
 			if strings.HasPrefix(dep.Repository, "http://") || strings.HasPrefix(dep.Repository, "https://") {
-				if _, err := h.ensureRepository(dep.Repository, auth); err != nil {
+				if _, err := h.EnsureRepository(dep.Repository, auth); err != nil {
 					return nil, fmt.Errorf("can not download index for repository: %w", err)
 				}
 			}
@@ -363,17 +364,17 @@ func (h HelmClient) buildDependencies(chartLoc string, auth AuthSettings) (*char
 	return chartToInstall, nil
 }
 
-// ensureRepository adds the repository url if it doesn't exist and downloads the latest index file.
+// EnsureRepository adds the repository url if it doesn't exist and downloads the latest index file.
 // The repository is added with the name helm-manager-$(sha256 url).
-func (h HelmClient) ensureRepository(url string, auth AuthSettings) (string, error) {
+func (h HelmClient) EnsureRepository(url string, auth AuthSettings) (*repo.ChartRepository, error) {
 	repoFile, err := repo.LoadFile(h.settings.RepositoryConfig)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return "", err
+		return nil, err
 	}
 
 	repoName, err := computeRepoName(url)
 	if err != nil {
-		return "", fmt.Errorf("can not compute repository's name for '%s': %w", url, err)
+		return nil, fmt.Errorf("can not compute repository's name for '%s': %w", url, err)
 	}
 	desiredEntry := &repo.Entry{
 		Name:     repoName,
@@ -385,21 +386,21 @@ func (h HelmClient) ensureRepository(url string, auth AuthSettings) (string, err
 	// Ensure we have the last version of the index file.
 	chartRepo, err := repo.NewChartRepository(desiredEntry, h.getterProviders)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	// Constructor of the ChartRepository uses the default Helm cache. However, we have to use the cached defined in the
 	// client settings.
 	chartRepo.CachePath = h.settings.RepositoryCache
 
 	if _, err := chartRepo.DownloadIndexFile(); err != nil {
-		return "", fmt.Errorf("can not download index file: %w", err)
+		return nil, fmt.Errorf("can not download index file: %w", err)
 	}
 
 	if !repoFile.Has(repoName) {
 		repoFile.Add(desiredEntry)
-		return repoName, repoFile.WriteFile(h.settings.RepositoryConfig, 0644)
+		return nil, repoFile.WriteFile(h.settings.RepositoryConfig, 0644)
 	}
-	return repoName, nil
+	return chartRepo, nil
 }
 
 // computeRepoName computes the name of the repository from url.
