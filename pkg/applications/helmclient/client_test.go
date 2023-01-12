@@ -189,13 +189,7 @@ func TestDownloadChart(t *testing.T) {
 				downloadDest := t.TempDir()
 				settings := NewSettings(downloadDest)
 
-				tf := cmdtesting.NewTestFactory().WithNamespace(defaultNs)
-				defer tf.Cleanup()
-
-				helmClient, err := NewInstallationClient(context.Background(), tf, settings, defaultNs, log)
-				if err != nil {
-					t.Fatalf("can not init helm Client: %s", err)
-				}
+				helmClient := NewDownloadClient(context.Background(), settings, log)
 
 				chartLoc, err := helmClient.DownloadChart(tc.repoUrl, tc.chartName, tc.chartVersion, downloadDest, tc.auth)
 
@@ -378,9 +372,6 @@ func TestBuildDependencies(t *testing.T) {
 				tempDir := t.TempDir()
 				settings := NewSettings(tempDir)
 
-				tf := cmdtesting.NewTestFactory().WithNamespace(defaultNs)
-				defer tf.Cleanup()
-
 				// This chart may be used as a file dependency by testingChart.
 				fileDepChart := &chart.Chart{
 					Metadata: &chart.Metadata{
@@ -428,10 +419,7 @@ func TestBuildDependencies(t *testing.T) {
 					}
 				}
 
-				helmClient, err := NewInstallationClient(context.Background(), tf, settings, defaultNs, log)
-				if err != nil {
-					t.Fatalf("can not init helm client: %s", err)
-				}
+				helmClient := NewDownloadClient(context.Background(), settings, log)
 
 				chartUnderTest, err := helmClient.buildDependencies(filepath.Join(tempDir, chartName), tc.auth)
 
