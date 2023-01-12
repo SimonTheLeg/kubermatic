@@ -76,7 +76,7 @@ func (h HelmTemplate) InstallOrUpgrade(chartLoc string, applicationInstallation 
 		Namespace:  &h.ApplicationInstallation.Spec.Namespace.Name,
 	}
 
-	helmClient, err := helmclient.NewClient(
+	helmClient, err := helmclient.NewInstallationClient(
 		h.Ctx,
 		restClientGetter,
 		helmclient.NewSettings(helmCacheDir),
@@ -132,7 +132,7 @@ func (h HelmTemplate) Uninstall(applicationInstallation *appskubermaticv1.Applic
 		Namespace:  &h.ApplicationInstallation.Spec.Namespace.Name,
 	}
 
-	helmClient, err := helmclient.NewClient(
+	helmClient, err := helmclient.NewInstallationClient(
 		h.Ctx,
 		restClientGetter,
 		helmclient.NewSettings(helmCacheDir),

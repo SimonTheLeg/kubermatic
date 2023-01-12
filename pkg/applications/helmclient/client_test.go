@@ -49,7 +49,7 @@ func TestNewShouldFailWhenRESTClientGetterNamespaceIsDifferentThanTargetNamespac
 	tf := cmdtesting.NewTestFactory().WithNamespace(defaultNs)
 	defer tf.Cleanup()
 
-	_, err := NewClient(context.Background(), tf, settings, "another-ns", log)
+	_, err := NewInstallationClient(context.Background(), tf, settings, "another-ns", log)
 	if err == nil {
 		t.Fatalf("helmclient.NewClient() should fail when RESTClientGetter namespace is different than targetNamespace : %s", err)
 	}
@@ -192,7 +192,7 @@ func TestDownloadChart(t *testing.T) {
 				tf := cmdtesting.NewTestFactory().WithNamespace(defaultNs)
 				defer tf.Cleanup()
 
-				helmClient, err := NewClient(context.Background(), tf, settings, defaultNs, log)
+				helmClient, err := NewInstallationClient(context.Background(), tf, settings, defaultNs, log)
 				if err != nil {
 					t.Fatalf("can not init helm Client: %s", err)
 				}
@@ -428,7 +428,7 @@ func TestBuildDependencies(t *testing.T) {
 					}
 				}
 
-				helmClient, err := NewClient(context.Background(), tf, settings, defaultNs, log)
+				helmClient, err := NewInstallationClient(context.Background(), tf, settings, defaultNs, log)
 				if err != nil {
 					t.Fatalf("can not init helm client: %s", err)
 				}

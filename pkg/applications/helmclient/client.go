@@ -138,10 +138,12 @@ func NewDeployOpts(wait bool, timeout time.Duration, atomic bool) (*DeployOpts, 
 	}, nil
 }
 
-// HelmClient is a client that allows interacting with Helm.
+// InstallationClient is a client that allows installing, upgrading, and deleting helm charts.
 // If you want to use it in a concurrency context, you must create several clients with different HelmSettings. Otherwise
 // writing repository.xml or download index file may fails as it will be written by several threads.
-type HelmClient struct {
+type InstallationClient struct {
+	*DownloadClient
+
 	ctx context.Context
 
 	restClientGetter genericclioptions.RESTClientGetter
@@ -161,7 +163,22 @@ type HelmClient struct {
 	logger *zap.SugaredLogger
 }
 
-func NewClient(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter, settings HelmSettings, targetNamespace string, logger *zap.SugaredLogger) (*HelmClient, error) {
+// DownloadClient is a client that allows downloading charts and registry indices.
+// If you want to use it in a concurrency context, you must create several clients with different HelmSettings. Otherwise
+// writing repository.xml or download index file may fails as it will be written by several threads.
+type DownloadClient struct {
+	ctx context.Context
+
+	// Provider represents any getter and the schemes that it supports.
+	// For example, an HTTP provider may provide one getter that handles both 'http' and 'https' schemes
+	getterProviders getter.Providers
+
+	settings HelmSettings
+
+	logger *zap.SugaredLogger
+}
+
+func NewInstallationClient(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter, settings HelmSettings, targetNamespace string, logger *zap.SugaredLogger) (*InstallationClient, error) {
 	// Even if namespace is set in the actionConfig.init() function, upgrade action take the namespace from RESTClientGetter.
 	// If the namespaces are different, the release will be installed in the namespace set in the RESTClientGetter but the
 	// release information will be stored in the targetNamespace which leads to a release which cannot be uninstalled with Helm.
@@ -178,10 +195,11 @@ func NewClient(ctx context.Context, restClientGetter genericclioptions.RESTClien
 		return nil, fmt.Errorf("can not initialize helm actionConfig: %w", err)
 	}
 
-	return &HelmClient{
+	return &InstallationClient{
 		ctx:              ctx,
 		restClientGetter: restClientGetter,
 		settings:         settings,
+		DownloadClient:   NewDownloadClient(ctx, settings, logger),
 		getterProviders:  settings.GetterProviders(),
 		actionConfig:     actionConfig,
 		targetNamespace:  targetNamespace,
@@ -189,9 +207,18 @@ func NewClient(ctx context.Context, restClientGetter genericclioptions.RESTClien
 	}, nil
 }
 
+func NewDownloadClient(ctx context.Context, settings HelmSettings, logger *zap.SugaredLogger) *DownloadClient {
+	return &DownloadClient{
+		ctx:             ctx,
+		getterProviders: settings.GetterProviders(),
+		settings:        settings,
+		logger:          logger,
+	}
+}
+
 // DownloadChart from url into dest folder and return the chart location (eg /tmp/foo/apache-1.0.0.tgz)
 // The dest folder must exist.
-func (h HelmClient) DownloadChart(url string, chartName string, version string, dest string, auth AuthSettings) (string, error) {
+func (h DownloadClient) DownloadChart(url string, chartName string, version string, dest string, auth AuthSettings) (string, error) {
 	var repoName string
 	var err error
 	if strings.HasPrefix(url, "oci://") {
@@ -234,7 +261,7 @@ func (h HelmClient) DownloadChart(url string, chartName string, version string, 
 // InstallOrUpgrade installs the chart located at chartLoc into targetNamespace if it's not already installed.
 // Otherwise it upgrades the chart.
 // charLoc is the path to the chart archive (e.g. /tmp/foo/apache-1.0.0.tgz) or folder containing the chart (e.g. /tmp/mychart/apache).
-func (h HelmClient) InstallOrUpgrade(chartLoc string, releaseName string, values map[string]interface{}, deployOpts DeployOpts, auth AuthSettings) (*release.Release, error) {
+func (h InstallationClient) InstallOrUpgrade(chartLoc string, releaseName string, values map[string]interface{}, deployOpts DeployOpts, auth AuthSettings) (*release.Release, error) {
 	if _, err := h.actionConfig.Releases.Last(releaseName); err != nil {
 		return h.Install(chartLoc, releaseName, values, deployOpts, auth)
 	}
@@ -243,7 +270,7 @@ func (h HelmClient) InstallOrUpgrade(chartLoc string, releaseName string, values
 
 // Install the chart located at chartLoc into targetNamespace. If the chart was already installed, an error is returned.
 // charLoc is the path to the chart archive (eg /tmp/foo/apache-1.0.0.tgz) or folder containing the chart (e.g. /tmp/mychart/apache).
-func (h HelmClient) Install(chartLoc string, releaseName string, values map[string]interface{}, deployOpts DeployOpts, auth AuthSettings) (*release.Release, error) {
+func (h InstallationClient) Install(chartLoc string, releaseName string, values map[string]interface{}, deployOpts DeployOpts, auth AuthSettings) (*release.Release, error) {
 	chartToInstall, err := h.buildDependencies(chartLoc, auth)
 	if err != nil {
 		return nil, err
@@ -266,7 +293,7 @@ func (h HelmClient) Install(chartLoc string, releaseName string, values map[stri
 
 // Upgrade the chart located at chartLoc into targetNamespace. If the chart is not already installed, an error is returned.
 // charLoc is the path to the chart archive (e.g. /tmp/foo/apache-1.0.0.tgz) or folder containing the chart (e.g. /tmp/mychart/apache).
-func (h HelmClient) Upgrade(chartLoc, releaseName string, values map[string]interface{}, deployOpts DeployOpts, auth AuthSettings) (*release.Release, error) {
+func (h InstallationClient) Upgrade(chartLoc, releaseName string, values map[string]interface{}, deployOpts DeployOpts, auth AuthSettings) (*release.Release, error) {
 	chartToUpgrade, err := h.buildDependencies(chartLoc, auth)
 	if err != nil {
 		return nil, err
@@ -287,14 +314,14 @@ func (h HelmClient) Upgrade(chartLoc, releaseName string, values map[string]inte
 }
 
 // Uninstall the release in targetNamespace.
-func (h HelmClient) Uninstall(releaseName string) (*release.UninstallReleaseResponse, error) {
+func (h InstallationClient) Uninstall(releaseName string) (*release.UninstallReleaseResponse, error) {
 	uninstallClient := action.NewUninstall(h.actionConfig)
 	return uninstallClient.Run(releaseName)
 }
 
 // buildDependencies adds missing repositories and then does a Helm dependency build (i.e. download the chart dependencies
 // from repositories into "charts" folder).
-func (h HelmClient) buildDependencies(chartLoc string, auth AuthSettings) (*chart.Chart, error) {
+func (h DownloadClient) buildDependencies(chartLoc string, auth AuthSettings) (*chart.Chart, error) {
 	fi, err := os.Stat(chartLoc)
 	if err != nil {
 		return nil, fmt.Errorf("can not find chart at `%s': %w", chartLoc, err)
@@ -366,7 +393,7 @@ func (h HelmClient) buildDependencies(chartLoc string, auth AuthSettings) (*char
 
 // EnsureRepository adds the repository url if it doesn't exist and downloads the latest index file.
 // The repository is added with the name helm-manager-$(sha256 url).
-func (h HelmClient) EnsureRepository(url string, auth AuthSettings) (*repo.ChartRepository, error) {
+func (h DownloadClient) EnsureRepository(url string, auth AuthSettings) (*repo.ChartRepository, error) {
 	repoFile, err := repo.LoadFile(h.settings.RepositoryConfig)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
@@ -398,7 +425,7 @@ func (h HelmClient) EnsureRepository(url string, auth AuthSettings) (*repo.Chart
 
 	if !repoFile.Has(repoName) {
 		repoFile.Add(desiredEntry)
-		return nil, repoFile.WriteFile(h.settings.RepositoryConfig, 0644)
+		return chartRepo, repoFile.WriteFile(h.settings.RepositoryConfig, 0644)
 	}
 	return chartRepo, nil
 }

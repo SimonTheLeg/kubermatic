@@ -66,7 +66,7 @@ func (h HelmSource) DownloadSource(destination string) (string, error) {
 		Namespace:  &ns,
 	}
 
-	helmClient, err := helmclient.NewClient(h.Ctx,
+	helmClient, err := helmclient.NewInstallationClient(h.Ctx,
 		restClientGetter,
 		helmclient.NewSettings(helmCacheDir),
 		ns,

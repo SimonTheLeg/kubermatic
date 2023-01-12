@@ -389,7 +389,7 @@ func uninstallTest(t *testing.T, ctx context.Context, client ctrlruntimeclient.C
 		Namespace:  &ns.Name,
 	}
 
-	helmClient, err := NewClient(ctx, restClientGetter, settings, ns.Name, kubermaticlog.Logger)
+	helmClient, err := NewInstallationClient(ctx, restClientGetter, settings, ns.Name, kubermaticlog.Logger)
 	if err != nil {
 		t.Fatalf("failed to create helm client: %s", err)
 	}
@@ -418,7 +418,7 @@ func uninstallShloulFailedIfnotAlreadyInstalledTest(t *testing.T, ctx context.Co
 		Namespace:  &ns.Name,
 	}
 
-	helmClient, err := NewClient(ctx, restClientGetter, settings, ns.Name, kubermaticlog.Logger)
+	helmClient, err := NewInstallationClient(ctx, restClientGetter, settings, ns.Name, kubermaticlog.Logger)
 	if err != nil {
 		t.Fatalf("failed to create helm client: %s", err)
 	}
@@ -436,7 +436,7 @@ func uninstallShloulFailedIfnotAlreadyInstalledTest(t *testing.T, ctx context.Co
 // when building dependencies and return the full path to the copied chart. (i.e. Helm_TMP_DIR/chartDir)
 //
 // if chartPath is an archive (i.e. chart.tgz) then we simply returns the path to the chart archive.
-func buildHelClient(t *testing.T, ctx context.Context, ns *corev1.Namespace, chartPath string) (*HelmClient, string) {
+func buildHelClient(t *testing.T, ctx context.Context, ns *corev1.Namespace, chartPath string) (*InstallationClient, string) {
 	t.Helper()
 	tempDir := t.TempDir()
 	settings := NewSettings(tempDir)
@@ -458,7 +458,7 @@ func buildHelClient(t *testing.T, ctx context.Context, ns *corev1.Namespace, cha
 		Namespace:  &ns.Name,
 	}
 
-	helmClient, err := NewClient(ctx, restClientGetter, settings, ns.Name, kubermaticlog.Logger)
+	helmClient, err := NewInstallationClient(ctx, restClientGetter, settings, ns.Name, kubermaticlog.Logger)
 	if err != nil {
 		t.Fatalf("failed to create helm client: %s", err)
 	}
