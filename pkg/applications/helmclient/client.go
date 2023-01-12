@@ -138,6 +138,21 @@ func NewDeployOpts(wait bool, timeout time.Duration, atomic bool) (*DeployOpts, 
 	}, nil
 }
 
+// DownloadClient is a client that allows downloading charts and registry indices.
+// If you want to use it in a concurrency context, you must create several clients with different HelmSettings. Otherwise
+// writing repository.xml or download index file may fails as it will be written by several threads.
+type DownloadClient struct {
+	ctx context.Context
+
+	// Provider represents any getter and the schemes that it supports.
+	// For example, an HTTP provider may provide one getter that handles both 'http' and 'https' schemes
+	getterProviders getter.Providers
+
+	settings HelmSettings
+
+	logger *zap.SugaredLogger
+}
+
 // InstallationClient is a client that allows installing, upgrading, and deleting helm charts.
 // If you want to use it in a concurrency context, you must create several clients with different HelmSettings. Otherwise
 // writing repository.xml or download index file may fails as it will be written by several threads.
@@ -163,19 +178,13 @@ type InstallationClient struct {
 	logger *zap.SugaredLogger
 }
 
-// DownloadClient is a client that allows downloading charts and registry indices.
-// If you want to use it in a concurrency context, you must create several clients with different HelmSettings. Otherwise
-// writing repository.xml or download index file may fails as it will be written by several threads.
-type DownloadClient struct {
-	ctx context.Context
-
-	// Provider represents any getter and the schemes that it supports.
-	// For example, an HTTP provider may provide one getter that handles both 'http' and 'https' schemes
-	getterProviders getter.Providers
-
-	settings HelmSettings
-
-	logger *zap.SugaredLogger
+func NewDownloadClient(ctx context.Context, settings HelmSettings, logger *zap.SugaredLogger) *DownloadClient {
+	return &DownloadClient{
+		ctx:             ctx,
+		getterProviders: settings.GetterProviders(),
+		settings:        settings,
+		logger:          logger,
+	}
 }
 
 func NewInstallationClient(ctx context.Context, restClientGetter genericclioptions.RESTClientGetter, settings HelmSettings, targetNamespace string, logger *zap.SugaredLogger) (*InstallationClient, error) {
@@ -205,15 +214,6 @@ func NewInstallationClient(ctx context.Context, restClientGetter genericclioptio
 		targetNamespace:  targetNamespace,
 		logger:           logger,
 	}, nil
-}
-
-func NewDownloadClient(ctx context.Context, settings HelmSettings, logger *zap.SugaredLogger) *DownloadClient {
-	return &DownloadClient{
-		ctx:             ctx,
-		getterProviders: settings.GetterProviders(),
-		settings:        settings,
-		logger:          logger,
-	}
 }
 
 // DownloadChart from url into dest folder and return the chart location (eg /tmp/foo/apache-1.0.0.tgz)
