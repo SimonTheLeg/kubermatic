@@ -19,12 +19,13 @@ package helmclient
 import (
 	"context"
 	"path/filepath"
+	"strings"
 
 	"go.uber.org/zap"
 	helmrepo "helm.sh/helm/v3/pkg/repo"
 )
 
-// TODO @vgramer: Do you have a preference if we should keep the clients in separate files or merge them all in one client.go file?
+// TODO @vgramer: Do you have a preference if we should keep the clients in separate files or merge them all in one client.go file? Also I think license could be an issue?
 
 // SearchClient is a client that allows searching through registry indices.
 // If you want to use it in a concurrency context, you must create several clients with different HelmSettings. Otherwise
@@ -37,6 +38,7 @@ type SearchClient struct {
 	logger *zap.SugaredLogger
 }
 
+// NewSearchClient builds SearchClient.
 func NewSearchClient(ctx context.Context, settings HelmSettings, auth AuthSettings, logger *zap.SugaredLogger) *SearchClient {
 	return &SearchClient{
 		DownloadClient: NewDownloadClient(ctx, settings, logger),
@@ -47,7 +49,13 @@ func NewSearchClient(ctx context.Context, settings HelmSettings, auth AuthSettin
 
 // ListAllChartsForURL downloads the index for the given registry and returns
 // a list of all chart names.
+// Only available for http registries due to https://github.com/helm/helm/issues/9983#issuecomment-890992659.
+// In case of an OCI registry, ListAllChartsForURL will return SearchNotSupportedForOCIError.
 func (h *SearchClient) ListAllChartsForURL(url string) ([]string, error) {
+	if strings.HasPrefix(url, "oci://") {
+		return nil, &SearchNotSupportedForOCIError{}
+	}
+
 	rep, err := h.EnsureRepository(url, h.auth)
 	if err != nil {
 		return nil, err
@@ -67,4 +75,10 @@ func (h *SearchClient) ListAllChartsForURL(url string) ([]string, error) {
 	}
 
 	return chartnames, nil
+}
+
+type SearchNotSupportedForOCIError struct{}
+
+func (*SearchNotSupportedForOCIError) Error() string {
+	return "searching is not supported for OCI registries on helm's side"
 }

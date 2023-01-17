@@ -18,6 +18,7 @@ package helmclient
 
 import (
 	"context"
+	"errors"
 	"path"
 	"sort"
 	"testing"
@@ -43,16 +44,19 @@ func TestListAllChartsForRegistry(t *testing.T) {
 		name           string
 		registryUrl    string
 		expectedCharts []string
+		expectedErr    error
 	}{
 		{
 			name:           "Listing from HTTP registry should be successful",
 			registryUrl:    httpRegistryUrl,
 			expectedCharts: []string{"examplechart", "examplechart2"},
+			expectedErr:    nil,
 		},
 		{
-			name:           "Listing from OCI registry should be successful",
+			name:           "Listing from OCI registry is not supported",
 			registryUrl:    ociRegistryUrl,
-			expectedCharts: []string{"examplechart", "examplechart2"},
+			expectedCharts: []string{},
+			expectedErr:    &SearchNotSupportedForOCIError{},
 		},
 	}
 
@@ -64,8 +68,8 @@ func TestListAllChartsForRegistry(t *testing.T) {
 			c := NewSearchClient(context.Background(), settings, AuthSettings{}, log)
 
 			res, err := c.ListAllChartsForURL(tc.registryUrl)
-			if err != nil {
-				t.Fatal(err)
+			if !errors.Is(tc.expectedErr, err) {
+				t.Errorf("Expected and given errors differ. got '%v', expect '%v'", err, tc.expectedErr)
 			}
 
 			sort.Strings(res)
