@@ -1,53 +1,79 @@
+/*
+Copyright 2023 The Kubermatic Kubernetes Platform contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package helmclient
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"testing"
+import (
+	"context"
+	"path"
+	"sort"
+	"testing"
 
-// 	helmgetter "helm.sh/helm/v3/pkg/getter"
-// 	helmrepo "helm.sh/helm/v3/pkg/repo"
-// 	"k8s.io/cli-runtime/pkg/genericclioptions"
-// )
+	"k8c.io/kubermatic/v2/pkg/applications/test"
+	kubermaticlog "k8c.io/kubermatic/v2/pkg/log"
+	"k8s.io/utils/strings/slices"
+)
 
-// func TestSearch(t *testing.T) {
-// 	url := "https://charts.bitnami.com/bitnami/"
+func TestListAllChartsForRegistry(t *testing.T) {
+	log := kubermaticlog.New(true, kubermaticlog.FormatJSON).Sugar()
+	chartArchiveDir := t.TempDir()
 
-// 	restclientGetter := &genericclioptions.ConfigFlags{}
-// 	c, err := NewInstallationClient(context.Background(), restclientGetter, NewSettings("/tmp/helmclient"), "default", nil)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	chartGlobPath := path.Join(chartArchiveDir, "*.tgz")
+	test.PackageChart(t, "testdata/examplechart", chartArchiveDir)
+	test.PackageChart(t, "testdata/examplechart2", chartArchiveDir)
 
-// 	rep, err := c.EnsureRepository(url, AuthSettings{})
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+	httpRegistryUrl := test.StartHttpRegistryWithCleanup(t, chartGlobPath)
 
-// 	ind, err := helmrepo.LoadIndexFile(rep.CachePath + "/" + rep.Config.Name + "-index.yaml")
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	rep.IndexFile = ind
+	ociRegistryUrl := test.StartOciRegistry(t, chartGlobPath)
 
-// 	for chartname := range rep.IndexFile.Entries {
-// 		fmt.Println(chartname)
-// 	}
-// }
+	testCases := []struct {
+		name           string
+		registryUrl    string
+		expectedCharts []string
+	}{
+		{
+			name:           "Listing from HTTP registry should be successful",
+			registryUrl:    httpRegistryUrl,
+			expectedCharts: []string{"examplechart", "examplechart2"},
+		},
+		{
+			name:           "Listing from OCI registry should be successful",
+			registryUrl:    ociRegistryUrl,
+			expectedCharts: []string{"examplechart", "examplechart2"},
+		},
+	}
 
-// func TestSearch2(t *testing.T) {
-// 	url := "https://charts.bitnami.com/bitnami/"
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			downloadDest := t.TempDir()
+			settings := NewSettings(downloadDest)
 
-// 	providers := helmgetter.Providers{helmgetter.Provider{
-// 		Schemes: []string{"http", "https"},
-// 		New:     helmgetter.NewHTTPGetter,
-// 	},
-// 	}
+			c := NewSearchClient(context.Background(), settings, AuthSettings{}, log)
 
-// 	res, err := helmrepo.FindChartInRepoURL(url, "airflow", "14.0.6", "", "", "", providers)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
+			res, err := c.ListAllChartsForURL(tc.registryUrl)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-// 	fmt.Println(res)
-// }
+			sort.Strings(res)
+			sort.Strings(tc.expectedCharts)
+
+			if !slices.Equal(res, tc.expectedCharts) {
+				t.Errorf("Expected and given charts differ. got '%v', expect '%v'", res, tc.expectedCharts)
+			}
+		})
+	}
+}
