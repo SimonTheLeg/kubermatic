@@ -191,6 +191,10 @@ type ApplicationDefinitionSpec struct {
 	// Method used to install the application
 	Method TemplateMethod `json:"method"`
 
+	// DefaultNamespace describes overrides for the namespace in the UI when creating an application.
+	// If DefaultNamespace is unset, the name of the Application is being used.
+	DefaultNamespace string `json:"defaultNamespace,omitempty"`
+
 	// DefaultValues describe overrides for manifest-rendering in UI when creating an application.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	DefaultValues *runtime.RawExtension `json:"defaultValues,omitempty"`
